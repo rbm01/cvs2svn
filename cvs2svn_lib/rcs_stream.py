@@ -19,8 +19,12 @@
 
 from cStringIO import StringIO
 import re
-from cvs2svn_lib.keyword_expander import collapse_keywords
+from cvs2svn_lib.keyword_obsd import collapse_keywords
+from cvs2svn_lib.keyword_obsd import expand_keywords
 
+
+# Print debug messages: 1 - enable debug messages   0 - disable debug messages
+debug = 0
 
 def msplit(s):
   """Split S into an array of lines.
@@ -307,7 +311,20 @@ class RCSStream:
         )
     return inverse_diff.getvalue()
 
-  def collapse_keywords(self):
+  def expand_keywords(self, rcsfile, rev, timestamp, author):
+    """Return TEXT with keywords expanded for CVS_REV.
+
+    E.g., '$Author$' -> '$Author: jrandom $'."""
+
+    i = 0; num_lines = len(self._lines)
+    if debug: print "RCSStream.expand_keywords(): About to expand " \
+       + str(num_lines) + " lines."
+    while i < num_lines:
+      if debug: print "TEXT[%d]=%s" % (i, self._lines[i]),
+      self._lines[i] = expand_keywords(self._lines[i], rcsfile, rev, timestamp, author)
+      i += 1
+
+  def collapse_keywords(self):                  # RBM
     """Collapse CVS keywords in the current file content.  This must
     be performed after diffs were applied to the file content."""
 

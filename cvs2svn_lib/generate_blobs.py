@@ -54,8 +54,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(sys.argv[0])))
 from cvs2svn_lib.rcsparser import Sink
 from cvs2svn_lib.rcsparser import parse
 from cvs2svn_lib.rcs_stream import RCSStream
-from cvs2svn_lib.keyword_expander import collapse_keywords
 
+
+# Print debug messages: 1 - enable debug messages   0 - disable debug messages
+debug = 0
 
 def read_marks():
   # A map from CVS revision number (e.g., 1.2.3.4) to mark:
@@ -81,6 +83,11 @@ class RevRecord(object):
     # The (f, offset, length) where the fulltext of this revision can
     # be found:
     self.fulltext = None
+
+    # RCS keyword information for a revision                    RBM
+    #  (rcsfile, timestamp, author, state, branches, next)
+    self.keywordInfo = None
+
 
   def is_needed(self):
     return bool(self.mark is not None or self.refs)
@@ -139,6 +146,7 @@ class WriteBlobSink(Sink):
     # create records for them now (the rest will be filled in while
     # reading the RCS file):
     for (rev, mark) in marks.items():
+      if debug: print "WriteBlobSink.__init__(): REV=" + rev + "  MARK=" + str(mark)
       self.revrecs[rev] = RevRecord(rev, mark)
 
     # Should keyword modification be disabled?  This is useful for      RBM
@@ -148,6 +156,7 @@ class WriteBlobSink(Sink):
     # The RevRecord of the last fulltext that has been reconstructed,
     # if it still is_needed():
     self.last_revrec = None
+
     # An RCSStream holding the fulltext of last_revrec:
     self.last_rcsstream = None
 
@@ -163,8 +172,18 @@ class WriteBlobSink(Sink):
       self.revrecs[rev] = revrec
       return revrec
 
+  # This is overriding cvs2svn_rcsparse.common.py:define_revision()  RBM
   def define_revision(self, rev, timestamp, author, state, branches, next):
+
+    if debug: print "WriteBlobSink.define_revision():" \
+       + "  DISABLE_KW_MODS=" + ("True" if self.disable_kw_mods else "False") \
+       + "  REV=" + rev \
+       + "  NEXT=" + (next if (next is not None) else "None")
+
     revrec = self[rev]
+
+    # Save the keyword info for this revision  RBM
+    revrec.keywordInfo = (rcsfile, timestamp, author, state, branches, next)
 
     if next is not None:
       revrec.refs.add(next)
@@ -185,7 +204,7 @@ class WriteBlobSink(Sink):
     Parameter: MODE is a string containing the keyword expansion mode.
     Possible values include 'o' and 'b', amongst others.
     """
-    if mode == 'b':
+    if mode == 'b' or mode == 'o':
       self.disable_kw_mods = True
 
   def tree_completed(self):
@@ -237,16 +256,30 @@ class WriteBlobSink(Sink):
     if revrec is None:
       return
 
+    (rcsfile, timestamp, author, state, branches, next) = revrec.keywordInfo
+    if debug: print "WriteBlobSink.set_revision_info(): RCSFILE=" + rcsfile + "  REV=" + rev + "  MARK=" + str(revrec.mark)
+
     base_rev = revrec.base
     if base_rev is None:
       # This must be the last revision on trunk, for which the
       # fulltext is stored directly in the RCS file:
       assert self.last_revrec is None
-      if revrec.mark is not None:
-        revrec.write_blob(self.blobfile, text)
+      if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 1" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
       if revrec.is_needed():
         self.last_revrec = revrec
         self.last_rcsstream = RCSStream(text)
+        if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 2" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
+        if not self.disable_kw_mods:              # RBM
+          self.last_rcsstream.expand_keywords(rcsfile,
+                                              rev,
+                                              timestamp,
+                                              author,
+                                              )           # RBM
+          #self.last_rcsstream.collapse_keywords() # RBM
+      if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 3" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
+      if revrec.mark is not None:
+        if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 4" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
+        revrec.write_blob(self.blobfile, self.last_rcsstream.get_text())
     elif self.last_revrec is not None and base_rev == self.last_revrec.rev:
       # Our base revision is stored in self.last_rcsstream.
       self.last_revrec.refs.remove(rev)
@@ -256,7 +289,13 @@ class WriteBlobSink(Sink):
             )
       self.last_rcsstream.apply_diff(text)
       if not self.disable_kw_mods:              # RBM
-        self.last_rcsstream.collapse_keywords() # RBM
+        if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 5"
+        self.last_rcsstream.expand_keywords(rcsfile,
+                                            rev,
+                                            timestamp,
+                                            author,
+                                            )           # RBM
+        #self.last_rcsstream.collapse_keywords() # RBM
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, self.last_rcsstream.get_text())
       if revrec.is_needed():
@@ -267,6 +306,8 @@ class WriteBlobSink(Sink):
     else:
       # Our base revision is not stored in self.last_rcsstream; it
       # will have to be obtained from elsewhere.
+
+      if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 6"
 
       # Store the old last_rcsstream if necessary:
       if self.last_revrec is not None:
@@ -282,7 +323,12 @@ class WriteBlobSink(Sink):
       base_revrec.refs.remove(rev)
       rcsstream.apply_diff(text)
       if not self.disable_kw_mods:              # RBM
-        rcsstream.collapse_keywords()           # RBM
+        rcsstream.expand_keywords(rcsfile,
+                                  rev,
+                                  timestamp,
+                                  author,
+                                  )           # RBM
+        #rcsstream.collapse_keywords()           # RBM
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, rcsstream.get_text())
       if revrec.is_needed():
@@ -295,6 +341,7 @@ class WriteBlobSink(Sink):
 
 
 def main(args):
+  global rcsfile                # RBM
   [blobfilename] = args
   blobfile = open(blobfilename, 'w+b')
   while True:
@@ -313,14 +360,14 @@ def main(args):
     p = re.compile(r'.*\.(avi|AVI|cur|CUR|ico|ICO|gif|GIF|jpg|JPG|'
       r'bmp|BMP|png|PNG|tif|TIF|hlp|HLP|cnt|CNT|o|obj|OBJ|'
       r'class|CLASS|jar|JAR|sys|SYS|zip|ZIP|dll|DLL|exe|EXE|'
-      r'exp|EXP|a|lib|LIB|so|myi|MYI|myd|MYD|isd|ISD|frm|FRM|db|DB|'
-      r'book|BOOK|fm|FM|fts|FTS|gid|GID|pdf|PDF|'
+      r'exp|EXP|myi|MYI|myd|MYD|isd|ISD|frm|FRM|db|DB|'
+      r'book|BOOK|dat|DAT|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
       r'pdb|PDB|pdm|PDM|doc|DOC|tmp|TMP|xls|XLS|ppt|PPT|msm|MSM|'
-      r'rpm|RPM|vsd|VSD|tar|gz|gzip),v$')
-    if p.match(rcsfile):
-      disable_kw_mods = True
-    else:
-      disable_kw_mods = False
+      r'rpm|RPM|vsd|VSD|tar|gz|gzip),v$')       # RBM
+    if p.match(rcsfile):                        # RBM
+      disable_kw_mods = True                    # RBM
+    else:                                       # RBM
+      disable_kw_mods = False                   # RBM
     f = open(rcsfile, 'rb')
     try:
       parse(f, WriteBlobSink(blobfile, marks, disable_kw_mods))
@@ -332,5 +379,3 @@ def main(args):
 
 if __name__ == '__main__':
   main(sys.argv[1:])
-
-
