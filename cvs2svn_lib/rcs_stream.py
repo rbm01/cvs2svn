@@ -19,6 +19,7 @@
 
 from cStringIO import StringIO
 import re
+from cvs2svn_lib.keyword_expander import collapse_keywords
 
 
 def msplit(s):
@@ -306,4 +307,12 @@ class RCSStream:
         )
     return inverse_diff.getvalue()
 
+  def collapse_keywords(self):
+    """Collapse CVS keywords in the current file content.  This must
+    be performed after diffs were applied to the file content."""
+
+    i = 0; num_lines = len(self._lines)
+    while i < num_lines:
+      self._lines[i] = collapse_keywords(self._lines[i])
+      i += 1
 

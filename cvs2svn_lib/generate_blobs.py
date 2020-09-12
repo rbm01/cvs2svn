@@ -47,12 +47,14 @@ import sys
 import os
 import tempfile
 import cPickle as pickle
+import re
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(sys.argv[0])))
 
 from cvs2svn_lib.rcsparser import Sink
 from cvs2svn_lib.rcsparser import parse
 from cvs2svn_lib.rcs_stream import RCSStream
+from cvs2svn_lib.keyword_expander import collapse_keywords
 
 
 def read_marks():
@@ -126,7 +128,7 @@ class RevRecord(object):
 
 
 class WriteBlobSink(Sink):
-  def __init__(self, blobfile, marks):
+  def __init__(self, blobfile, marks, disable_kw_mods):         # RBM
     self.blobfile = blobfile
 
     # A map {rev : RevRecord} for all of the revisions whose fulltext
@@ -138,6 +140,10 @@ class WriteBlobSink(Sink):
     # reading the RCS file):
     for (rev, mark) in marks.items():
       self.revrecs[rev] = RevRecord(rev, mark)
+
+    # Should keyword modification be disabled?  This is useful for      RBM
+    # binary files.
+    self.disable_kw_mods = disable_kw_mods
 
     # The RevRecord of the last fulltext that has been reconstructed,
     # if it still is_needed():
@@ -170,6 +176,18 @@ class WriteBlobSink(Sink):
       assert dependent_revrec.base is None
       dependent_revrec.base = rev
 
+  def set_expansion(self, mode):                # RBM
+    """Reports the keyword expansion mode for this RCS file.
+
+    This is the value of the 'expand' header in the admin section of the
+    RCS file.  This function can only be called before admin_completed().
+
+    Parameter: MODE is a string containing the keyword expansion mode.
+    Possible values include 'o' and 'b', amongst others.
+    """
+    if mode == 'b':
+      self.disable_kw_mods = True
+
   def tree_completed(self):
     """Remove unneeded RevRecords.
 
@@ -182,12 +200,34 @@ class WriteBlobSink(Sink):
         for revrec in self.revrecs.itervalues()
         if not revrec.is_needed()
         ]
+    # NOTE: This code, as originally written, is kind of in a sticky    RBM
+    # situation.  The `is_needed()' function returns `False' either if
+    # the mark is `None' or if there are no references.  Because the
+    # mark might already be set to `None', some revisions with
+    # references might get deleted early, so the attempt to remove the
+    # reference to the base revision will fail.  However, due to the
+    # way `self.revrecs' is implemented, there is no way to tell if
+    # the base revision was already removed when attempting to remove
+    # references to the base revision.  Thus, if any `KeyError' occurs
+    # when trying to remove references in the base revision, we simply
+    # have to ignore it.
+
+    # The other option would be to do a topological sort on the
+    # revision records, but I don't think that is worth the extra
+    # effort.
     while revrecs_to_remove:
       revrec = revrecs_to_remove.pop()
       del self.revrecs[revrec.rev]
       if revrec.base is not None:
         base_revrec = self[revrec.base]
-        base_revrec.refs.remove(revrec.rev)
+        try:                                      # RBM
+          base_revrec.refs.remove(revrec.rev)
+        except KeyError:
+          del self.revrecs[base_revrec.rev]
+          continue
+          # import pdb; pdb.set_trace()
+          # break
+
         if not base_revrec.is_needed():
           revrecs_to_remove.append(base_revrec)
 
@@ -215,6 +255,8 @@ class WriteBlobSink(Sink):
             self.fulltext_file, self.last_rcsstream.get_text()
             )
       self.last_rcsstream.apply_diff(text)
+      if not self.disable_kw_mods:              # RBM
+        self.last_rcsstream.collapse_keywords() # RBM
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, self.last_rcsstream.get_text())
       if revrec.is_needed():
@@ -239,6 +281,8 @@ class WriteBlobSink(Sink):
       rcsstream = RCSStream(base_revrec.read_fulltext())
       base_revrec.refs.remove(rev)
       rcsstream.apply_diff(text)
+      if not self.disable_kw_mods:              # RBM
+        rcsstream.collapse_keywords()           # RBM
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, rcsstream.get_text())
       if revrec.is_needed():
@@ -258,9 +302,28 @@ def main(args):
       (rcsfile, marks) = pickle.load(sys.stdin)
     except EOFError:
       break
+
+    # Unfortunately, because the architecture of the blobs generator
+    # hampers passing options to `generate_blobs.py', we must include
+    # any necessary option modifications and customizations to the
+    # source code. RBM
+
+    # Hand-extracted CVS keyword modification exclusions from
+    # `CVSROOT/cvswrappers', customize as necessary.
+    p = re.compile(r'.*\.(avi|AVI|cur|CUR|ico|ICO|gif|GIF|jpg|JPG|'
+      r'bmp|BMP|png|PNG|tif|TIF|hlp|HLP|cnt|CNT|o|obj|OBJ|'
+      r'class|CLASS|jar|JAR|sys|SYS|zip|ZIP|dll|DLL|exe|EXE|'
+      r'exp|EXP|a|lib|LIB|so|myi|MYI|myd|MYD|isd|ISD|frm|FRM|db|DB|'
+      r'book|BOOK|fm|FM|fts|FTS|gid|GID|pdf|PDF|'
+      r'pdb|PDB|pdm|PDM|doc|DOC|tmp|TMP|xls|XLS|ppt|PPT|msm|MSM|'
+      r'rpm|RPM|vsd|VSD|tar|gz|gzip),v$')
+    if p.match(rcsfile):
+      disable_kw_mods = True
+    else:
+      disable_kw_mods = False
     f = open(rcsfile, 'rb')
     try:
-      parse(f, WriteBlobSink(blobfile, marks))
+      parse(f, WriteBlobSink(blobfile, marks, disable_kw_mods))
     finally:
       f.close()
 
