@@ -33,9 +33,9 @@ date_fmt_new = "%Y-%m-%d %H:%M:%S"    # CVS 1.12
 date_fmt = date_fmt_old
 
 _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|Source|State'
-_kw_re = re.compile(r'\$(' + _kws + r'):[^$\n]*\$')
-_kwo_re = re.compile(r'\$(' + _kws + r')(:[^$\n]*)?\$')
-# Example            r'\$(Author)(:[^$\n]*)?\$'
+_kw_re  = re.compile(r'\$(' + _kws + r'):?[^$\n]*\$')
+_kwo_re = re.compile(r'\$(' + _kws + r')(:?[^$\n]*)?\$')
+# Example            r'\$(Author)(:?[^$\n]*)?\$'
 
 def do_keyword_expansion(match, text, rcsfile, rev, timestamp, author):
   """ Assemble the keyword expansion strings """
