@@ -57,7 +57,7 @@ from cvs2svn_lib.rcs_stream import RCSStream
 
 
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
-debug = 0
+debug = 1
 
 def read_marks():
   # A map from CVS revision number (e.g., 1.2.3.4) to mark:
@@ -361,7 +361,8 @@ def main(args):
       r'bmp|BMP|png|PNG|tif|TIF|hlp|HLP|cnt|CNT|o|obj|OBJ|'
       r'class|CLASS|jar|JAR|sys|SYS|zip|ZIP|dll|DLL|exe|EXE|'
       r'exp|EXP|myi|MYI|myd|MYD|isd|ISD|frm|FRM|db|DB|'
-      r'book|BOOK|dat|DAT|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
+      #r'book|BOOK|dat|DAT|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
+      r'book|BOOK|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
       r'pdb|PDB|pdm|PDM|doc|DOC|tmp|TMP|xls|XLS|ppt|PPT|msm|MSM|'
       r'rpm|RPM|vsd|VSD|tar|gz|gzip),v$')       # RBM
     if p.match(rcsfile):                        # RBM

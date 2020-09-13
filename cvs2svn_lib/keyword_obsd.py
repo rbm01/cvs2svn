@@ -25,7 +25,7 @@ from cvs2svn_lib.context import Ctx
 
 
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
-debug = 0
+debug = 1
 
 date_fmt_old = "%Y/%m/%d %H:%M:%S"    # CVS 1.11, rcs
 date_fmt_new = "%Y-%m-%d %H:%M:%S"    # CVS 1.12
@@ -33,9 +33,54 @@ date_fmt_new = "%Y-%m-%d %H:%M:%S"    # CVS 1.12
 date_fmt = date_fmt_old
 
 _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|Source|State'
-_kw_re  = re.compile(r'\$(' + _kws + r'):?[^$\n]*\$')
-_kwo_re = re.compile(r'\$(' + _kws + r')(:?[^$\n]*)?\$')
-# Example            r'\$(Author)(:?[^$\n]*)?\$'
+_kw_re  = re.compile(r'\$(' + _kws + r')\b:?[^$\n]*?(?<!\\)\$')
+_kwo_re = re.compile(r'\$(' + _kws + r')\b(:?[^$\n]*)?(?<!\\)\$')
+# Example            r'\$(Author)\b(:?[^$\n]*)?(?<!\\)\$'
+
+# BUG 200913a - Keyword following by alphanumeric character
+# SOLUTION - Modify regexp, using '\b\ word separator
+#diff -r -I CVS -I \.git /usr/src/gnu/llvm/lib/Target/PowerPC/PPCInstrVSX.td /home/rmills/src-to-git/src/gnu/llvm/lib/Target/PowerPC/PPCInstrVSX.td
+#2028c2028
+#<             (VEXTUBRX $Idx, $S)>;
+#---
+#>             (VEXTUBRX $Id: PPCInstrVSX.td,v 1.1.1.7 2019/06/23 21:36:37 patrick Exp $S)>;
+
+# BUG 200913a - First dollar after keyword, preceeded by backslash
+# SOLUTION: Modify regexp, using "negative lookbehind assertion"
+#diff -r -I CVS -I \.git /usr/src/gnu/usr.bin/cvs/contrib/commit_prep.in /home/rmills/src-to-git/src/gnu/usr.bin/cvs/contrib/commit_prep.in
+#37,38c37,38
+#< $LogString1 = "\\\$\\Log: .* \\\$";
+#< $LogString2 = "\\\$\\Log\\\$";
+#---
+#> $Log: not supported by cvs2svn $\\Log: .* \\\$";
+#> $Log: not supported by cvs2svn $\\Log\\\$";
+#54c54
+#< %s - The ID line should contain only \"@(#)module/path:\$Name\$:\$\Id\$\"
+#---
+#> %s - The ID line should contain only \"@(#)module/path:\$Name: not supported by cvs2svn $:\$\Id\$\"
+
+# BUG 200913a - ??
+#diff -r -I CVS -I \.git /usr/src/regress/sys/kern/extent/extest.exp /home/rmills/src-to-git/src/regress/sys/kern/extent/extest.exp
+#1c1
+#< # $OpenBSD: extest.exp,v 1.5 2019/09/11 12:30:34 kettenis Exp $
+#---
+#> # $OpenBSD: extest.exp,v 1.4 2009/10/13 20:53:40 miod Exp $
+
+# BUG 200913a - ??
+#diff -r -I CVS -I \.git /usr/src/sys/arch/luna88k/dev/sioreg.h /home/rmills/src-to-git/src/sys/arch/luna88k/dev/sioreg.h
+#1c1
+#< /* $OpenBSD: sioreg.h,v 1.1 2004/04/21 15:23:55 aoyama Exp $ */
+#---
+#> /* $OpenBSD: sioreg.h,v 1.1.1.1 2004/04/21 15:23:55 aoyama Exp $ */
+
+# BUG 200912a - Keword missing colon (:)
+# SOLUTION - Modify regexp
+#diff -r -I CVS -I \.git /usr/src/bin/ed/USD.doc/09.edtut/e5 /home/rmills/src-to-git/src/bin/ed/USD.doc/09.edtut/e5
+#1c1
+#< .\"	$OpenBSD: e5,v 1.2 2003/06/26 16:24:16 mickey Exp $
+#---
+#> .\"	$OpenBSD: e5,v 1.2 2003/06/26 16:24:16 mickey Exp 
+
 
 def do_keyword_expansion(match, text, rcsfile, rev, timestamp, author):
   """ Assemble the keyword expansion strings """
