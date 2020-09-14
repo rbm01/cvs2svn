@@ -33,7 +33,9 @@ date_fmt_new = "%Y-%m-%d %H:%M:%S"    # CVS 1.12
 date_fmt = date_fmt_old
 
 _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|Source|State'
-_kw_re  = re.compile(r'\$(' + _kws + r')\b:?[^$\n]*?(?<!\\)\$')
+
+# Ref: https://www.regular-expressions.info/conditional.html
+_kw_re  = re.compile(r'\$(' + _kws + r')\b[^$\n]*?(?<!\\)\$(?=\W)')
 _kwo_re = re.compile(r'\$(' + _kws + r')\b([^$\n]*)?' \
                      + r"(?<![.'" + r'"\\])\$(?=\W)'
                      )
