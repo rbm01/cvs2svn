@@ -34,14 +34,9 @@ date_fmt = date_fmt_old
 
 _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|Source|State'
 
-# Ref: https://www.regular-expressions.info/conditional.html
-# In the above article, in "Named and Relative Conditionals", it says
-# "Python supports conditionals using a numbered or named capturing group.
-# Python does not support conditionals using lookaround, even though Python
-# does support lookaround outside conditionals."
 _kw_re  = re.compile(r'\$(' + _kws + r')\b:[^$\n]*?(?<!\\)\$(?=\W)')
 
-_kwo_re = re.compile(r'\$(' + _kws + r')\b(?:(?=\s+\$)|(?!\s+\$)([^$\n]*)?)' \
+_kwo_re = re.compile(r'\$(' + _kws + r')\b(?!\s+\$)([^$\n]*)?' \
                      + r"(?<![.'" + r'"\\])\$(?=\W)'
                      )
 # Example            r'\$(Author)\b(:?[^$\n]*)?(?<!\\)\$'
