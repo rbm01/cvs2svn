@@ -25,7 +25,7 @@ from cvs2svn_lib.context import Ctx
 
 
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
-debug = 1
+debug = 0
 
 date_fmt_old = "%Y/%m/%d %H:%M:%S"    # CVS 1.11, rcs
 date_fmt_new = "%Y-%m-%d %H:%M:%S"    # CVS 1.12
@@ -35,8 +35,13 @@ date_fmt = date_fmt_old
 _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|Source|State'
 
 # Ref: https://www.regular-expressions.info/conditional.html
-_kw_re  = re.compile(r'\$(' + _kws + r')\b[^$\n]*?(?<!\\)\$(?=\W)')
-_kwo_re = re.compile(r'\$(' + _kws + r')\b([^$\n]*)?' \
+# In the above article, in "Named and Relative Conditionals", it says
+# "Python supports conditionals using a numbered or named capturing group.
+# Python does not support conditionals using lookaround, even though Python
+# does support lookaround outside conditionals."
+_kw_re  = re.compile(r'\$(' + _kws + r')\b:[^$\n]*?(?<!\\)\$(?=\W)')
+
+_kwo_re = re.compile(r'\$(' + _kws + r')\b(?:(?=\s+\$)|(?!\s+\$)([^$\n]*)?)' \
                      + r"(?<![.'" + r'"\\])\$(?=\W)'
                      )
 # Example            r'\$(Author)\b(:?[^$\n]*)?(?<!\\)\$'

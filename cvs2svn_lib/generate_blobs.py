@@ -57,7 +57,7 @@ from cvs2svn_lib.rcs_stream import RCSStream
 
 
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
-debug = 1
+debug = 0
 
 def read_marks():
   # A map from CVS revision number (e.g., 1.2.3.4) to mark:

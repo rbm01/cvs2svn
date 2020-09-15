@@ -24,7 +24,7 @@ from cvs2svn_lib.keyword_obsd import expand_keywords
 
 
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
-debug = 1
+debug = 0
 
 def msplit(s):
   """Split S into an array of lines.
