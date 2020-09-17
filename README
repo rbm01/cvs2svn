@@ -2,6 +2,8 @@ For documentation, see www/cvs2svn.html
 
 RBM NOTES
 =========
-My changes have been made to allow me to convert the OpenBSD CVS src repository to Git. The version available at https://github.com/openbsd/src is trunk only. My version has attempted to bring across all history. I'm not much more than a python novice, so purists may think my changes are an ugly hack. They're probably right, oh well.
+My changes have been made to allow me to convert the OpenBSD CVS src repository to Git. The official OpenBSD Git source repository available at https://github.com/openbsd/src is trunk only. My version includes all the history, with branches and tags. Please note that I don't guarantee that it is 100% complete and accurate.
+
+Also, I'd like to confess that I'm not much more than a python novice, so purists may think my changes to cvs2svn are an ugly hack. They're probably right, oh well.
 
 Credit to https://quorten.github.io/quorten-blog1/blog/2019/02/14/cvs-to-git-process which inspired and guided me to begin this process.
