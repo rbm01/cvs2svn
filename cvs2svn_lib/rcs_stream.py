@@ -331,7 +331,7 @@ class RCSStream:
 
       i += 1
 
-  def collapse_keywords(self):                  # RBM
+  def collapse_keywords(self):
     """Collapse CVS keywords in the current file content.  This must
     be performed after diffs were applied to the file content."""
 
@@ -339,4 +339,3 @@ class RCSStream:
     while i < num_lines:
       self._lines[i] = collapse_keywords(self._lines[i])
       i += 1
-

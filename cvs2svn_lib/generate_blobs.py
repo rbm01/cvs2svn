@@ -84,7 +84,7 @@ class RevRecord(object):
     # be found:
     self.fulltext = None
 
-    # RCS keyword information for a revision                    RBM
+    # RCS keyword information for a revision
     #  (rcsfile, timestamp, author, state, branches, next)
     self.keywordInfo = None
 
@@ -135,7 +135,7 @@ class RevRecord(object):
 
 
 class WriteBlobSink(Sink):
-  def __init__(self, blobfile, marks, disable_kw_mods):         # RBM
+  def __init__(self, blobfile, marks, disable_kw_mods):
     self.blobfile = blobfile
 
     # A map {rev : RevRecord} for all of the revisions whose fulltext
@@ -149,7 +149,7 @@ class WriteBlobSink(Sink):
       if debug: print "WriteBlobSink.__init__(): REV=" + rev + "  MARK=" + str(mark)
       self.revrecs[rev] = RevRecord(rev, mark)
 
-    # Should keyword modification be disabled?  This is useful for      RBM
+    # Should keyword modification be disabled?  This is useful for
     # binary files.
     self.disable_kw_mods = disable_kw_mods
 
@@ -172,7 +172,7 @@ class WriteBlobSink(Sink):
       self.revrecs[rev] = revrec
       return revrec
 
-  # This is overriding cvs2svn_rcsparse.common.py:define_revision()  RBM
+  # This is overriding cvs2svn_rcsparse.common.py:define_revision()
   def define_revision(self, rev, timestamp, author, state, branches, next):
 
     if debug: print "WriteBlobSink.define_revision():" \
@@ -182,7 +182,7 @@ class WriteBlobSink(Sink):
 
     revrec = self[rev]
 
-    # Save the keyword info for this revision  RBM
+    # Save the keyword info for this revision
     revrec.keywordInfo = (rcsfile, timestamp, author, state, branches, next)
 
     if next is not None:
@@ -195,7 +195,7 @@ class WriteBlobSink(Sink):
       assert dependent_revrec.base is None
       dependent_revrec.base = rev
 
-  def set_expansion(self, mode):                # RBM
+  def set_expansion(self, mode):
     """Reports the keyword expansion mode for this RCS file.
 
     This is the value of the 'expand' header in the admin section of the
@@ -219,7 +219,7 @@ class WriteBlobSink(Sink):
         for revrec in self.revrecs.itervalues()
         if not revrec.is_needed()
         ]
-    # NOTE: This code, as originally written, is kind of in a sticky    RBM
+    # NOTE: This code, as originally written, is kind of in a sticky
     # situation.  The `is_needed()' function returns `False' either if
     # the mark is `None' or if there are no references.  Because the
     # mark might already be set to `None', some revisions with
@@ -239,7 +239,7 @@ class WriteBlobSink(Sink):
       del self.revrecs[revrec.rev]
       if revrec.base is not None:
         base_revrec = self[revrec.base]
-        try:                                      # RBM
+        try:
           base_revrec.refs.remove(revrec.rev)
         except KeyError:
           del self.revrecs[base_revrec.rev]
@@ -269,13 +269,13 @@ class WriteBlobSink(Sink):
         self.last_revrec = revrec
         self.last_rcsstream = RCSStream(text)
         if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 2" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
-        if not self.disable_kw_mods:              # RBM
+        if not self.disable_kw_mods:
           self.last_rcsstream.expand_keywords(rcsfile,
                                               rev,
                                               timestamp,
                                               author,
-                                              )           # RBM
-          #self.last_rcsstream.collapse_keywords() # RBM
+                                              )
+          #self.last_rcsstream.collapse_keywords()
       if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 3" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
       if revrec.mark is not None:
         if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 4" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
@@ -288,14 +288,14 @@ class WriteBlobSink(Sink):
             self.fulltext_file, self.last_rcsstream.get_text()
             )
       self.last_rcsstream.apply_diff(text)
-      if not self.disable_kw_mods:              # RBM
+      if not self.disable_kw_mods:
         if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 5"
         self.last_rcsstream.expand_keywords(rcsfile,
                                             rev,
                                             timestamp,
                                             author,
-                                            )           # RBM
-        #self.last_rcsstream.collapse_keywords() # RBM
+                                            )
+        #self.last_rcsstream.collapse_keywords()
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, self.last_rcsstream.get_text())
       if revrec.is_needed():
@@ -322,13 +322,13 @@ class WriteBlobSink(Sink):
       rcsstream = RCSStream(base_revrec.read_fulltext())
       base_revrec.refs.remove(rev)
       rcsstream.apply_diff(text)
-      if not self.disable_kw_mods:              # RBM
+      if not self.disable_kw_mods:
         rcsstream.expand_keywords(rcsfile,
                                   rev,
                                   timestamp,
                                   author,
-                                  )           # RBM
-        #rcsstream.collapse_keywords()           # RBM
+                                  )
+        #rcsstream.collapse_keywords()
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, rcsstream.get_text())
       if revrec.is_needed():
@@ -341,7 +341,7 @@ class WriteBlobSink(Sink):
 
 
 def main(args):
-  global rcsfile                # RBM
+  global rcsfile
   [blobfilename] = args
   blobfile = open(blobfilename, 'w+b')
   while True:
@@ -353,7 +353,7 @@ def main(args):
     # Unfortunately, because the architecture of the blobs generator
     # hampers passing options to `generate_blobs.py', we must include
     # any necessary option modifications and customizations to the
-    # source code. RBM
+    # source code.
 
     # Hand-extracted CVS keyword modification exclusions from
     # `CVSROOT/cvswrappers', customize as necessary.
@@ -364,11 +364,11 @@ def main(args):
       #r'book|BOOK|dat|DAT|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
       r'book|BOOK|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
       r'pdb|PDB|pdm|PDM|doc|DOC|tmp|TMP|xls|XLS|ppt|PPT|msm|MSM|'
-      r'rpm|RPM|vsd|VSD|tar|gz|gzip),v$')       # RBM
-    if p.match(rcsfile):                        # RBM
-      disable_kw_mods = True                    # RBM
-    else:                                       # RBM
-      disable_kw_mods = False                   # RBM
+      r'rpm|RPM|vsd|VSD|tar|gz|gzip),v$')
+    if p.match(rcsfile):
+      disable_kw_mods = True
+    else:
+      disable_kw_mods = False
     f = open(rcsfile, 'rb')
     try:
       parse(f, WriteBlobSink(blobfile, marks, disable_kw_mods))
