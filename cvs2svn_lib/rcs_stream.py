@@ -19,6 +19,7 @@
 
 from cStringIO import StringIO
 import re
+import string
 from cvs2svn_lib.keyword_obsd import collapse_keywords
 from cvs2svn_lib.keyword_obsd import expand_keywords
 
@@ -321,7 +322,13 @@ class RCSStream:
        + str(num_lines) + " lines."
     while i < num_lines:
       if debug: print "TEXT[%d]=%s" % (i, self._lines[i]),
-      self._lines[i] = expand_keywords(self._lines[i], rcsfile, rev, timestamp, author)
+
+      # Quick check for presence of keyword. Here we check if the string "text"
+      # contains at least two '$' characters.
+      if string.count(self._lines[i], r'$') >= 2:
+        # There may be keyword(s) in this line, so try to expand them
+        self._lines[i] = expand_keywords(self._lines[i], rcsfile, rev, timestamp, author)
+
       i += 1
 
   def collapse_keywords(self):                  # RBM
