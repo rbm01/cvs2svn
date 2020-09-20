@@ -323,8 +323,8 @@ class RCSStream:
     while i < num_lines:
       if debug: print "TEXT[%d]=%s" % (i, self._lines[i]),
 
-      # Quick check for presence of keyword. Here we check if the string "text"
-      # contains at least two '$' characters.
+      # Quick check for presence of keyword. Here we check if the
+      # string "self._lines[i]" contains at least two '$' characters.
       if string.count(self._lines[i], r'$') >= 2:
         # There may be keyword(s) in this line, so try to expand them
         self._lines[i] = expand_keywords(self._lines[i], rcsfile, rev, timestamp, author)
@@ -337,5 +337,9 @@ class RCSStream:
 
     i = 0; num_lines = len(self._lines)
     while i < num_lines:
-      self._lines[i] = collapse_keywords(self._lines[i])
+      # Quick check for presence of keyword. Here we check if the
+      # string "self._lines[i]" contains at least two '$' characters.
+      if string.count(self._lines[i], r'$') >= 2:
+        self._lines[i] = collapse_keywords(self._lines[i])
+
       i += 1

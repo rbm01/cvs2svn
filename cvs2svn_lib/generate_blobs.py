@@ -135,7 +135,7 @@ class RevRecord(object):
 
 
 class WriteBlobSink(Sink):
-  def __init__(self, blobfile, marks, disable_kw_mods):
+  def __init__(self, blobfile, marks, disable_kw_mods, keyword_handling):
     self.blobfile = blobfile
 
     # A map {rev : RevRecord} for all of the revisions whose fulltext
@@ -148,6 +148,19 @@ class WriteBlobSink(Sink):
     for (rev, mark) in marks.items():
       if debug: print "WriteBlobSink.__init__(): REV=" + rev + "  MARK=" + str(mark)
       self.revrecs[rev] = RevRecord(rev, mark)
+
+    # keyword_handling can have one of three values:
+    #   'collapsed' -- collapse RCS/CVS keywords in the output; e.g.,
+    #   '$Author: jrandom $' -> '$Author$'.
+    #
+    #   'expanded' -- expand RCS/CVS keywords in the output; e.g.,
+    #   '$Author$' -> '$Author: jrandom $'.
+    #
+    #   'untouched' -- leave RCS/CVS keywords untouched.  For a file that had
+    #   keyword expansion enabled in CVS, this typically means that the
+    #   keyword comes out expanded as for the *previous* revision, because
+    #   CVS expands keywords on checkout, not checkin.
+    self.keyword_handling = keyword_handling
 
     # Should keyword modification be disabled?  This is useful for
     # binary files.
@@ -270,12 +283,17 @@ class WriteBlobSink(Sink):
         self.last_rcsstream = RCSStream(text)
         if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 2" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
         if not self.disable_kw_mods:
-          self.last_rcsstream.expand_keywords(rcsfile,
-                                              rev,
-                                              timestamp,
-                                              author,
-                                              )
-          #self.last_rcsstream.collapse_keywords()
+          if self.keyword_handling == "expanded":
+            self.last_rcsstream.expand_keywords(rcsfile,
+                                                rev,
+                                                timestamp,
+                                                author,
+                                                )
+          elif self.keyword_handling == "collapsed":
+            self.last_rcsstream.collapse_keywords()
+          else:
+            # Covers the "untouched" option
+            pass
       if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 3" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
       if revrec.mark is not None:
         if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 4" + "  REV=" + rev + "  MARK=" + str(revrec.mark)
@@ -290,12 +308,17 @@ class WriteBlobSink(Sink):
       self.last_rcsstream.apply_diff(text)
       if not self.disable_kw_mods:
         if debug: print "WriteBlobSink.set_revision_info(): GOT HERE 5"
-        self.last_rcsstream.expand_keywords(rcsfile,
-                                            rev,
-                                            timestamp,
-                                            author,
-                                            )
-        #self.last_rcsstream.collapse_keywords()
+        if self.keyword_handling == "expanded":
+          self.last_rcsstream.expand_keywords(rcsfile,
+                                              rev,
+                                              timestamp,
+                                              author,
+                                              )
+        elif self.keyword_handling == "collapsed":
+          self.last_rcsstream.collapse_keywords()
+        else:
+          # Covers the "untouched" option
+          pass
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, self.last_rcsstream.get_text())
       if revrec.is_needed():
@@ -323,12 +346,17 @@ class WriteBlobSink(Sink):
       base_revrec.refs.remove(rev)
       rcsstream.apply_diff(text)
       if not self.disable_kw_mods:
-        rcsstream.expand_keywords(rcsfile,
-                                  rev,
-                                  timestamp,
-                                  author,
-                                  )
-        #rcsstream.collapse_keywords()
+        if self.keyword_handling == "expanded":
+          rcsstream.expand_keywords(rcsfile,
+                                    rev,
+                                    timestamp,
+                                    author,
+                                    )
+        elif self.keyword_handling == "collapsed":
+          rcsstream.collapse_keywords()
+        else:
+          # Covers the "untouched" option
+          pass
       if revrec.mark is not None:
         revrec.write_blob(self.blobfile, rcsstream.get_text())
       if revrec.is_needed():
@@ -349,6 +377,11 @@ def main(args):
       (rcsfile, marks) = pickle.load(sys.stdin)
     except EOFError:
       break
+
+    # Hardwire the keyword handling regime until we figure out how to get
+    # it from the options file. Best bet is probably pass it as an
+    # argument when starting "generate_blobs.py"
+    keyword_handling = "expanded"
 
     # Unfortunately, because the architecture of the blobs generator
     # hampers passing options to `generate_blobs.py', we must include
@@ -371,7 +404,7 @@ def main(args):
       disable_kw_mods = False
     f = open(rcsfile, 'rb')
     try:
-      parse(f, WriteBlobSink(blobfile, marks, disable_kw_mods))
+      parse(f, WriteBlobSink(blobfile, marks, disable_kw_mods, keyword_handling))
     finally:
       f.close()
 
