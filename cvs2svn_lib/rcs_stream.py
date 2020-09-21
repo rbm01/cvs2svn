@@ -27,9 +27,6 @@ from cvs2svn_lib.keyword_obsd import expand_keywords
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
 debug = 0
 
-# Set a limit on the number of lines that are checked for keywords
-maxKeywordLines = 50
-
 def msplit(s):
   """Split S into an array of lines.
 
@@ -321,8 +318,6 @@ class RCSStream:
     E.g., '$Author$' -> '$Author: jrandom $'."""
 
     num_lines = len(self._lines)
-    if num_lines > maxKeywordLines:
-      num_lines = maxKeywordLines
     i = 0;
     if debug: print "RCSStream.expand_keywords(): About to expand " \
        + str(num_lines) + " lines."
@@ -342,8 +337,6 @@ class RCSStream:
     be performed after diffs were applied to the file content."""
 
     num_lines = len(self._lines)
-    if num_lines > maxKeywordLines:
-      num_lines = maxKeywordLines
     i = 0;
     while i < num_lines:
       # Quick check for presence of keyword. Here we check if the
