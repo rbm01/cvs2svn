@@ -27,11 +27,6 @@ from cvs2svn_lib.context import Ctx
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
 debug = 0
 
-date_fmt_old = "%Y/%m/%d %H:%M:%S"    # CVS 1.11, rcs
-date_fmt_new = "%Y-%m-%d %H:%M:%S"    # CVS 1.12
-
-date_fmt = date_fmt_old
-
 _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|Source|State'
 
 _kwo_re = re.compile(r'\$(' + _kws + r')\b(?!\s+\$)([^$\n]*)?' \
@@ -39,52 +34,103 @@ _kwo_re = re.compile(r'\$(' + _kws + r')\b(?!\s+\$)([^$\n]*)?' \
                      )
 
 
-def do_keyword_expansion(match, text, rcsfile, rev, timestamp, author):
-  """ Assemble the keyword expansion strings """
+class _KeywordExpander:
+  """A class whose instances provide substitutions for CVS keywords.
 
-  keyword = match.group(1).lower()      # extract keyword and set to lower case
-  if debug: print "     KEYWORD: " + keyword
+  This class is used via its __call__() method, which should be called
+  with a match object representing a match for a CVS keyword string.
+  The method returns the replacement for the matched text.
 
-  if (keyword == r'author'):
-    return author
-  if (keyword == r'date'):
-    return time.strftime(date_fmt, time.gmtime(timestamp))
-  if (keyword == r'header'):
+  The __call__() method works by calling the method with the same name
+  as that of the CVS keyword (converted to lower case).
+
+  Instances of this class can be passed as the REPL argument to
+  re.sub()."""
+
+  date_fmt_old = "%Y/%m/%d %H:%M:%S"    # CVS 1.11, rcs
+  date_fmt_new = "%Y-%m-%d %H:%M:%S"    # CVS 1.12
+
+  date_fmt = date_fmt_old
+
+  @classmethod
+  def use_old_date_format(klass):
+      """Class method to ensure exact compatibility with CVS 1.11
+      output.  Use this if you want to verify your conversion and you're
+      using CVS 1.11."""
+      klass.date_fmt = klass.date_fmt_old
+
+  def __init__(self, rcsFileName, rev, timestamp, authorName):
+    # Ensure we don't have attributes and methods with the same name. If we
+    # do, as I found out the hard way, __call__() screws up.
+    self.rcsFileName = rcsFileName
+    self.rev         = rev
+    self.timestamp   = timestamp
+    self.authorName  = authorName
+
+  def __call__(self, match):
+    keywordReplacement = '$%s: %s $' % (
+        match.group(1), getattr(self, match.group(1).lower())(),
+        )
+
+    if debug:
+      print "     KEYWORD: " + match.group(1).lower()
+      print "KEYWORD_REPL: " + keywordReplacement
+
+    return keywordReplacement
+
+  def author(self):
+    return self.authorName
+
+  def date(self):
+    return time.strftime(self.date_fmt, time.gmtime(self.timestamp))
+
+  def header(self):
     return '%s %s %s %s Exp' % (
-      rcsfile, rev,
-      time.strftime(date_fmt, time.gmtime(timestamp)),
-      author,
+      self.rcsFileName, self.rev,
+      time.strftime(self.date_fmt, time.gmtime(self.timestamp)),
+      self.authorName,
     )
-  if (keyword == r'id'):
+
+  def id(self):
     return  '%s %s %s %s Exp' % (
-      os.path.basename(rcsfile), rev,
-      time.strftime(date_fmt, time.gmtime(timestamp)),
-      author,
+      os.path.basename(self.rcsFileName), self.rev,
+      time.strftime(self.date_fmt, time.gmtime(self.timestamp)),
+      self.authorName,
     )
-  if (keyword == r'locker'):
+
+  def locker(self):
     return ''
-  if (keyword == r'log'):
+
+  def log(self):
     return 'not supported by cvs2svn'
-  if (keyword == r'mdocdate'):
+
+  def mdocdate(self):
     return '%s %d %s' % (
-      time.strftime("%B", time.gmtime(timestamp)),
-      time.gmtime(timestamp).tm_mday,
-      time.strftime("%Y", time.gmtime(timestamp))
+      time.strftime("%B", time.gmtime(self.timestamp)),
+      time.gmtime(self.timestamp).tm_mday,
+      time.strftime("%Y", time.gmtime(self.timestamp))
     )
-  if (keyword == r'name'):
+
+  def name(self):
     return 'not supported by cvs2svn'
-  if (keyword == r'openbsd'):
+
+  def openbsd(self):
     return '%s %s %s %s Exp' % (
-      os.path.basename(rcsfile), rev, time.strftime(date_fmt, time.gmtime(timestamp)),
-      author,
+      os.path.basename(self.rcsFileName), self.rev,
+        time.strftime(self.date_fmt, time.gmtime(self.timestamp)),
+      self.authorName,
     )
-  if (keyword == r'rcsfile'):
-    return os.path.basename(rcsfile)
-  if (keyword == r'revision'):
-    return rev
-  if (keyword == r'source'):
-    return rcsfile
-  if (keyword == r'state'):
+
+  def rcsfile(self):
+    return os.path.basename(self.rcsFileName)
+
+  def revision(self):
+    return self.rev
+
+  def source(self):
+    return self.rcsFileName
+
+  def state(self):
     return 'Exp'
 
 def expand_keywords(text, rcsfile, rev, timestamp, author):
@@ -92,25 +138,17 @@ def expand_keywords(text, rcsfile, rev, timestamp, author):
 
   E.g., '$Author$' -> '$Author: jrandom $'."""
 
-  for match_obj in _kwo_re.finditer(text):
-    # We have found a keyword if we get to this point. Replace the original
-    # keyword text with the expanded keyword text.
-    keywordReplacement = do_keyword_expansion(match_obj, text, rcsfile,
-                                              rev, timestamp, author)
+  newText = _kwo_re.sub(_KeywordExpander(rcsfile, rev, timestamp, author), text)
 
-    text = text[:match_obj.start(1)] + match_obj.group(1) + ": " \
-            + keywordReplacement + " " + text[match_obj.end(2):]
+  if debug:
+    print "     RCSFILE: " + rcsfile
+    print "         REV: " + rev
+    print "   TIMESTAMP: " + time.strftime(_KeywordExpander.date_fmt, time.gmtime(timestamp))
+    print "      AUTHOR: " + author
+    print "     OLDTEXT: " + text,
+    print "     NEWTEXT: " + newText
 
-    if debug:
-      print "KEYWORD_REPL: " + keywordReplacement
-      print "     RCSFILE: " + rcsfile
-      print "         REV: " + rev
-      print "   TIMESTAMP: " + time.strftime(date_fmt, time.gmtime(timestamp))
-      print "      AUTHOR: " + author
-      print "     NEWTEXT: " + text
-
-  return text
-
+  return newText
 
 def collapse_keywords(text):
   """Return TEXT with keywords collapsed.
@@ -118,5 +156,3 @@ def collapse_keywords(text):
   E.g., '$Author: jrandom $' -> '$Author$'."""
 
   return _kwo_re.sub(r'$\1$', text)
-
-
