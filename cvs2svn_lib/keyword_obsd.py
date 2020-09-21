@@ -155,4 +155,9 @@ def collapse_keywords(text):
 
   E.g., '$Author: jrandom $' -> '$Author$'."""
 
-  return _kwo_re.sub(r'$\1$', text)
+  newText = _kwo_re.sub(r'$\1$', text)
+  if debug:
+    print "     OLDTEXT: " + text,
+    print "     NEWTEXT: " + newText
+
+  return newText
