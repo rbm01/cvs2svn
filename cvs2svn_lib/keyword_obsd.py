@@ -21,16 +21,17 @@ import re
 import time
 import os.path
 
-from cvs2svn_lib.context import Ctx
-
 
 # Print debug messages: 1 - enable debug messages   0 - disable debug messages
 debug = 0
 
 _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|Source|State'
 
-_kwo_re = re.compile(r'\$(' + _kws + r')\b(?!\s+\$)([^$\n]*)?' \
-                     + r"(?<![.'" + r'"\\])\$(?:(?=\W)|(?=\w\s*\n))'
+# The following regexp finds collapsed and expanded keywords. Expanded keywords
+# will never contain any of the following characters, except in the unlikely
+# event that they occur in an RCS filename: $"&'#
+_kwo_re = re.compile(r'\$(' + _kws + r')\b(?!\s+\$)([^"&#$' + r"'\n]*)?" \
+                     + r'(?<![.\\])\$(?:(?=\W)|(?=\w\s*\n))'
                      )
 
 
@@ -161,3 +162,39 @@ def collapse_keywords(text):
     print "     NEWTEXT: " + newText
 
   return newText
+
+# -------------------- Test code below --------------------
+
+def main():
+  '''Standalone self-test code. Run with command:
+       python keyword_obsd.py'''
+
+  global debug
+
+  debug = 1
+  myRcsfile   = r'usr.sbin/afs/src/cf/Attic/krb-version.m4,v'
+  myRev       = r'1.7'
+  myTimestamp = 814005529       # 1995/10/18 08:38:49 UTC
+  myAuthor    = r'joe_blow'
+
+  testText1 = r"#  $Author$ aaa bbb $Date $ ccc $Header: Hi there $ " \
+    + r"zzz $Id: yadda $g ddd $Name$ eee fff" \
+    + "'$Id: vvv$' XXX $Source: /usr/src/Makefile $g\n"
+
+  # /home/cvs/src/lib/libcrypto/util/pl/Attic/BC-16.pl,v
+  #             local($ex)=($Name eq "SSL")?' $(L_CRYPTO) winsock':"";
+  testText2 = r'local($ex)=($Name eq "SSL")?' \
+    + r"' $(L_CRYPTO) winsock':" + '"";\n'
+
+  # /home/cvs/src/usr.sbin/afs/src/cf/Attic/krb-version.m4,v
+  #            sed -e "s/@USER@/$User/" -e "s/@HOST@/$Host/" -e "s/@DATE@/$Date/" include/${PACKAGE}-version.h.in > include/${PACKAGE}-version.h
+  testText3 = 'sed -e "s/@USER@/$User/" -e "s/@HOST@/$Host/" ' \
+    + '-e "s/@DATE@/$Date/" include/${PACKAGE}-version.h.in ' \
+    + '> include/${PACKAGE}-version.h\n'
+
+  for j in [testText1, testText2, testText3]:
+    expand_keywords(j, myRcsfile, myRev, myTimestamp, myAuthor)
+
+# Start the main program
+if __name__ == '__main__':
+    main()
