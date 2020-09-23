@@ -396,7 +396,7 @@ def main(args):
       r'exp|EXP|myi|MYI|myd|MYD|isd|ISD|frm|FRM|db|DB|'
       #r'book|BOOK|dat|DAT|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
       r'book|BOOK|fm|FM|fts|FTS|gid|GID|pdf|PDF|ps|PS'
-      r'pdb|PDB|pdm|PDM|doc|DOC|tmp|TMP|xls|XLS|ppt|PPT|msm|MSM|'
+      r'pdb|PDB|pdm|PDM|DOC|tmp|TMP|xls|XLS|ppt|PPT|msm|MSM|'
       r'rpm|RPM|vsd|VSD|tar|gz|gzip),v$')
     if p.match(rcsfile):
       disable_kw_mods = True
