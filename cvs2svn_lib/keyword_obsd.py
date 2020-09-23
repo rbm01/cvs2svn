@@ -29,8 +29,8 @@ _kws = 'Author|Date|Header|Id|Locker|Log|Mdocdate|Name|OpenBSD|RCSfile|Revision|
 
 # The following regexp finds collapsed and expanded keywords. Expanded keywords
 # will never contain any of the following characters, except in the unlikely
-# event that they occur in an RCS filename: $"&'#
-_kwo_re = re.compile(r'\$(' + _kws + r')\b(?!\s+\$)([^"&#$' + r"'\n]*)?" \
+# event that they occur in an RCS filename: $"&'
+_kwo_re = re.compile(r'\$(' + _kws + r')\b(?!\s+\$)([^"&$' + r"'\n]*)?" \
                      + r'(?<![.\\])\$(?:(?=\W)|(?=\w\s*\n))'
                      )
 
@@ -64,9 +64,11 @@ class _KeywordExpander:
     # Ensure we don't have attributes and methods with the same name. If we
     # do, as I found out the hard way, __call__() screws up.
     self.rcsFileName = rcsFileName
-    self.rev         = rev
     self.timestamp   = timestamp
     self.authorName  = authorName
+    # Replace 4 digit nums that end in 1, usually tag on a branch point,
+    # with the 2 digit trunk revision number
+    self.rev = re.sub(r'^(\d+\.\d+)\.\d+\.1$', r'\1', rev, 1)
 
   def __call__(self, match):
     keywordReplacement = '$%s: %s $' % (
@@ -172,8 +174,10 @@ def main():
   global debug
 
   debug = 1
+
+  # Some arbitary data for testing purposes
   myRcsfile   = r'usr.sbin/afs/src/cf/Attic/krb-version.m4,v'
-  myRev       = r'1.7'
+  myRev       = r'1.7.0.2'
   myTimestamp = 814005529       # 1995/10/18 08:38:49 UTC
   myAuthor    = r'joe_blow'
 
