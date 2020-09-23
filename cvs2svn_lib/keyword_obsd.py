@@ -64,11 +64,9 @@ class _KeywordExpander:
     # Ensure we don't have attributes and methods with the same name. If we
     # do, as I found out the hard way, __call__() screws up.
     self.rcsFileName = rcsFileName
+    self.rev         = rev
     self.timestamp   = timestamp
     self.authorName  = authorName
-    # Replace 4 digit nums that end in 1, usually tag on a branch point,
-    # with the 2 digit trunk revision number
-    self.rev = re.sub(r'^(\d+\.\d+)\.\d+\.1$', r'\1', rev, 1)
 
   def __call__(self, match):
     keywordReplacement = '$%s: %s $' % (
