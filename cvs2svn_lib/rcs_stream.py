@@ -324,10 +324,17 @@ class RCSStream:
       if debug: print "TEXT[%d]=%s" % (i, myline),
 
       # Quick check for presence of keyword. Here we check if the
-      # string "self._lines[i]" contains at least two '$' characters.
+      # string "myline" contains at least two '$' characters.
       if string.count(myline, r'$') >= 2:
         # There may be keyword(s) in this line, so try to expand them
         self._lines[i] = expand_keywords(myline, rcsfile, rev, timestamp, author)
+
+    # Alternatively to enumerate() above, we could use list comprehension to
+    # expand the keywords. Note, expand_keywords() is only called after we've
+    # done a quick check for presence of two or more '$' characters
+    #self._lines[:] = [expand_keywords(myline, rcsfile, rev, timestamp, author)
+    #                  if string.count(myline, r'$') >= 2 else myline
+    #                  for myline in self._lines]
 
   def collapse_keywords(self):
     """Collapse CVS keywords in the current file content.  This must
@@ -338,3 +345,8 @@ class RCSStream:
       # string "myline" contains at least two '$' characters.
       if string.count(myline, r'$') >= 2:
         self._lines[i] = collapse_keywords(myline)
+
+    # List comprehension version of the above code
+    #self._lines[:] = [collapse_keywords(myline)
+    #                  if string.count(myline, r'$') >= 2 else myline
+    #                  for myline in self._lines]
